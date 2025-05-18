@@ -26,7 +26,7 @@ if __name__ == "__main__":
     sensor = 'c'
     speed = 0.7
     altitude = 25000
-    probability_detect = 0.9
+    probability_detect = 0.1
     tgt_location = (100.0, 50.0)
     
     end_time = 18   # hours

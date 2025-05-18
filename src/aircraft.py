@@ -161,23 +161,37 @@ class Aircraft():
         '''
         
         '''
-
-        # translate relative to sensor platform
-
-
-        # rotate the coordinates from WCS to entity's coordinate system x,y --> u,v
-
-
-        # check the point's u,v coordinates are both within altitude * tan(1/2 FOV)
-
-        # simplified method:
+        # locations:
         tgt_x = self.target_location[0]
         tgt_y = self.target_location[1]
         own_x = self.get_position()[0]
-        own_y = self.get_position()[1]
-        dist = np.linalg.norm([tgt_x - own_x, tgt_y - own_y])
-        if dist <= self.sensor_projected_width:
-            return True
+        own_y = self.get_position()[1]        
+
+        # translate relative to sensor platform
+        relative_x = tgt_x - own_x
+        relative_y = tgt_y - own_y
+
+        # rotate the coordinates from WCS to entity's coordinate system x,y --> u,v
+        psi = self.get_position()[2] - np.arctan2(relative_y , relative_x)
+        psi_deg = psi * 180 / np.pi
+        norm = np.sqrt(relative_x**2 + relative_y**2)
+        u = norm * np.cos(psi)
+        v = norm * np.sin(psi)
+
+        # check the point's u,v coordinates are both within altitude * tan(1/2 FOV)
+        if np.all([(np.abs(u) <= self.sensor_projected_width) , (np.abs(v) <= self.sensor_projected_width)]):
+            random_draw_successful_detect = np.random.binomial(1, self.p_detect)
+            if(random_draw_successful_detect):
+                print('successful detect')
+                return True
+            else:
+                print('unsuccessful detect in range')
+
+        # simplified method:
+
+        # dist = np.linalg.norm([tgt_x - own_x, tgt_y - own_y])
+        # if dist <= self.sensor_projected_width:
+        #     return True
         return False
     
 
