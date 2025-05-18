@@ -8,7 +8,7 @@ class StaticInfo():
         self.speed_of_sound_at_altitudes: pd.DataFrame = pd.DataFrame(data=[1204, 1182, 1160, 1138, 1115], index=[5000, 10000, 15000, 20000, 25000], columns=['speed_kmps'])
 
 class Aircraft():
-    def __init__(self, sensor_type: str='a', speed: float=0.9, altitude: float=25000, probability_detect: float=0.5, tgt_location: tuple[float]=(0.0, 0.0), az_cue_angle: float=-90.0, step_size: float=1.0/7200.0) -> None:
+    def __init__(self, sensor_type: str='a', speed: float=0.9, altitude: float=25000, probability_detect: float=0.5, tgt_location_x: float=0.0, tgt_location_y: float=0.0, az_cue_angle: float=-90.0, step_size: float=1.0/7200.0, random_seed: int=999999) -> None:
         self.info = StaticInfo()
         self.timestep_size = step_size
         self.mach = speed
@@ -24,10 +24,15 @@ class Aircraft():
         self.max_on_station_endurance = self.calc_max_on_station_endurance()
         self._remaining_endurance = self.max_on_station_endurance
         self.p_detect = probability_detect
-        self.target_location = tgt_location
+        self.target_location = (tgt_location_x, tgt_location_y)
         self._position = (100.0, 0.0, 3.0*np.pi/4.0)
         self.route = self.make_initial_route()
         self.current_waypoint = 0
+        self.seed = self.set_seed(random_seed)
+
+    def set_seed(self, seed_val) -> int:
+        np.random.seed(seed_val)
+        return seed_val
 
     def circular_pi(self, value: float) -> float:
         if value > 2*np.pi:
