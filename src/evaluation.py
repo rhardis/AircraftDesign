@@ -9,6 +9,9 @@ def run_sim(end_time, timestep, sensor, speed, altitude, probability_detect, tgt
     current_time = 0.0
     done = False
     while (not done) and (current_time <= end_time):
+        # if np.floor(current_time*7200) % 360 == 0:
+        #     pos = craft.get_position()[:2]
+        #     print(pos)
         if np.floor(current_time*7200) % 3600 == 0:
             print(current_time)
         done, found_time, cost = craft.timestep_update(current_time)
@@ -24,7 +27,7 @@ if __name__ == "__main__":
     speed = 0.7
     altitude = 25000
     probability_detect = 0.9
-    tgt_location = (0, 0)
+    tgt_location = (100.0, 50.0)
     
     end_time = 18   # hours
     time_step = 1.0 / 7200.0    # 0.5 seconds

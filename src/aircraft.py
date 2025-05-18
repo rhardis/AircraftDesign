@@ -25,10 +25,9 @@ class Aircraft():
         self._remaining_endurance = self.max_on_station_endurance
         self.p_detect = probability_detect
         self.target_location = tgt_location
-        self._position = (1.0, 0.0, 3*np.pi/4)
+        self._position = (100.0, 0.0, 3.0*np.pi/4.0)
         self.route = self.make_initial_route()
         self.current_waypoint = 0
-        [print(tup) for tup in self.route]
 
     def circular_pi(self, value: float) -> float:
         if value > 2*np.pi:
@@ -86,7 +85,7 @@ class Aircraft():
 
         # if found target, update the results information and end the sim
         if tgt_found:
-            print('target found')
+            print(f'target found when craft was at {self.get_position()[:2]} after {current_time} hours.')
             target_found_time = current_time + self.one_way_transit_time_hrs
             return True, target_found_time, self.calc_design_cost()
 
@@ -97,9 +96,6 @@ class Aircraft():
         
         # the target is not found and there is remaining endurance.  Calculate the next position
         else:
-            # update the fuel
-            self.set_remaining_endurance(current_time)
-
             # update the position
             self.set_position(self.calculate_next_position())
 
@@ -120,7 +116,8 @@ class Aircraft():
         heading = current_position[2]
 
         # check if reached next waypoint.  If so, update to next waypoint
-        if np.linalg.norm([goal_waypoint[0] - current_xy[0], goal_waypoint[1] - current_xy[1]]) <= 0.2:
+        dist_from_waypoint = np.linalg.norm([goal_waypoint[0] - current_xy[0], goal_waypoint[1] - current_xy[1]])
+        if dist_from_waypoint <= 0.2:
             heading = upcoming_waypoint_heading
             current_position = goal_waypoint
             
@@ -128,8 +125,8 @@ class Aircraft():
             self.current_waypoint += 1
 
         # With current speed in x and y directions and heading, calculate the next position at next time step
-        new_x = self.timestep_size * self.air_speed_kmph * np.cos(heading)
-        new_y = self.timestep_size * self.air_speed_kmph * np.sin(heading)
+        new_x = current_xy[0] + self.timestep_size * self.air_speed_kmph * np.cos(heading)
+        new_y = current_xy[1] + self.timestep_size * self.air_speed_kmph * np.sin(heading)
         return (new_x, new_y, heading)
 
     def convert_mach_to_airspeed(self, mach_number: float, altitude_ft: float, mach_speed_table: pd.DataFrame) -> float:
@@ -172,6 +169,15 @@ class Aircraft():
 
 
         # check the point's u,v coordinates are both within altitude * tan(1/2 FOV)
+
+        # simplified method:
+        tgt_x = self.target_location[0]
+        tgt_y = self.target_location[1]
+        own_x = self.get_position()[0]
+        own_y = self.get_position()[1]
+        dist = np.linalg.norm([tgt_x - own_x, tgt_y - own_y])
+        if dist <= self.sensor_projected_width:
+            return True
         return False
     
 
