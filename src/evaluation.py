@@ -47,10 +47,14 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, end_time, time_step,
         ones_mat.iloc[:, 0] = end_time
         ones_mat.iloc[:, 1] = time_step
         ones_mat.iloc[:, 5] = probability_detect
-        ones_mat.iloc[:, 6] = np.random.random(size=base_matrix.shape[0]) * 100
-        ones_mat.iloc[:, 7] = np.random.random(size=base_matrix.shape[0]) * 100
         ones_mat.iloc[:, 9] = ones_mat.index   # set the treatment number
+
+        # for each replicate:
         for rand_seed in range(1, num_replicates+1):
+            # set the random values for x y tgt position and random seed
+            np.random.seed(rand_seed)
+            ones_mat.iloc[:, 6] = np.random.random(size=base_matrix.shape[0]) * 100
+            ones_mat.iloc[:, 7] = np.random.random(size=base_matrix.shape[0]) * 100            
             ones_mat.iloc[:, 8] = rand_seed
             for idx in range(ones_mat.shape[0]):
                 runs.append(ones_mat.iloc[idx, :].to_list())
@@ -61,13 +65,13 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, end_time, time_step,
 def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> pd.DataFrame:
     # define the run matrix input factors:
     sensor_types = ['a', 'b', 'c']
-    machs = np.linspace(0.4, 0.9, num=6)
-    altitudes = np.linspace(5000, 25000, num=8)
+    machs = np.linspace(0.4, 0.9, num=4)
+    altitudes = np.linspace(5000, 25000, num=6)
 
     jobs = generate_runs('ff', sensor_types, machs, altitudes, end_time, time_step, probability_detect, num_replicates)
 
     print(f'running {len(jobs)} jobs on {mp.cpu_count()-1} cores.')
-    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1, chunksize=100)
+    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1, chunksize=10)
 
     results_df = pd.DataFrame(columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)'])
     for result in r:
@@ -76,7 +80,7 @@ def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> p
     return results_df
 
 if __name__ == "__main__":
-    num_reps = 15
+    num_reps = 3
     probability_detect = 0.5
     end_time = 18   # hours
     time_step = 1.0 / 3600.0    # 0.5 seconds
