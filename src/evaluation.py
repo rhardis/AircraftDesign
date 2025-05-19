@@ -1,3 +1,4 @@
+import multiprocessing as mp
 import numpy as np
 import pandas as pd
 from tqdm.contrib.concurrent import process_map
@@ -7,7 +8,7 @@ from aircraft import Aircraft
 
 def run_sim(args):
     # unpack the args tuple
-    end_time, timestep, sensor, speed, altitude, probability_detect, tgt_x, tgt_y, random_seed = args
+    end_time, timestep, sensor, speed, altitude, probability_detect, tgt_x, tgt_y, random_seed, treatment = args
 
     craft = Aircraft(sensor, speed, altitude, probability_detect, tgt_x, tgt_y, random_seed)
 
@@ -17,15 +18,15 @@ def run_sim(args):
         # if np.floor(current_time*7200) % 360 == 0:
         #     pos = craft.get_position()[:2]
         #     print(pos)
-        if np.floor(current_time*7200) % 1800 == 0:
-            print(f'{current_time:.2f}')
+        # if np.floor(current_time*7200) % 1800 == 0:
+        #     print(f'{current_time:.2f}')
         done, found_time, cost = craft.timestep_update(current_time)
         # if done:
         #     print('done from aircraft condition')
         current_time += timestep
 
-    return pd.DataFrame(data=[[end_time, timestep, sensor, speed, altitude, probability_detect, tgt_x, tgt_y, found_time, cost]],
-                        columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)'])
+    return pd.DataFrame(data=[[treatment, random_seed, end_time, timestep, sensor, speed, altitude, probability_detect, tgt_x, tgt_y, found_time, cost]],
+                        columns=['treatment', 'replicate', 'end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)'])
 
 def generate_runs(doe_type, sensor_types, machs, altitudes, end_time, time_step, probability_detect, num_replicates):
     runs = []
@@ -40,14 +41,15 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, end_time, time_step,
             base_matrix.iloc[row, 1] = machs[int(base_matrix.iloc[row, 1])]
             base_matrix.iloc[row, 2] = altitudes[int(base_matrix.iloc[row, 2])]
 
-        ones_mat = pd.DataFrame(np.ones(shape=(base_matrix.shape[0], 9))) # 9 total columns to send into the run_sim function
+        ones_mat = pd.DataFrame(np.ones(shape=(base_matrix.shape[0], 10))) # 10 total columns to send into the run_sim function
         ones_mat.iloc[:, 2] = ones_mat.iloc[:, 2].astype(str)
         ones_mat.iloc[:, 2:5] = base_matrix
         ones_mat.iloc[:, 0] = end_time
         ones_mat.iloc[:, 1] = time_step
         ones_mat.iloc[:, 5] = probability_detect
-        ones_mat.iloc[:, 6] = tgt_location[0]
-        ones_mat.iloc[:, 7] = tgt_location[1]
+        ones_mat.iloc[:, 6] = np.random.random(size=base_matrix.shape[0]) * 100
+        ones_mat.iloc[:, 7] = np.random.random(size=base_matrix.shape[0]) * 100
+        ones_mat.iloc[:, 9] = ones_mat.index   # set the treatment number
         for rand_seed in range(1, num_replicates+1):
             ones_mat.iloc[:, 8] = rand_seed
             for idx in range(ones_mat.shape[0]):
@@ -59,32 +61,25 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, end_time, time_step,
 def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> pd.DataFrame:
     # define the run matrix input factors:
     sensor_types = ['a', 'b', 'c']
-    machs = np.linspace(0.4, 0.9, num=5)
-    altitudes = np.linspace(5000, 25000, num=5)
+    machs = np.linspace(0.4, 0.9, num=3)
+    altitudes = np.linspace(20000, 25000, num=2)
 
     jobs = generate_runs('ff', sensor_types, machs, altitudes, end_time, time_step, probability_detect, num_replicates)
 
-    result = run_sim(jobs[0])
-    
-    r = process_map(run_sim, jobs, max_workers=2)
+    print(f'running {len(jobs)} jobs on {mp.cpu_count()-1} cores.')
+    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1)
 
     results_df = pd.DataFrame(columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)'])
     for result in r:
         results_df = pd.concat([results_df, result])
-    results_df.to_csv(f'simulation_results_{len(jobs)/num_replicates}_treatments_{num_replicates}_reps.csv')
+    results_df.to_csv(f'simulation_results_{len(jobs)/num_replicates}_treatments_{num_replicates}_reps.csv', index=False)
     return results_df
 
 if __name__ == "__main__":
     num_reps = 2
-
-    sensor = 'c'
-    speed = 0.7
-    altitude = 25000
-    probability_detect = 0.1
-    tgt_location = (100.0, 50.0)
-    
+    probability_detect = 0.5
     end_time = 18   # hours
-    time_step = 1.0 / 7200.0    # 0.5 seconds
+    time_step = 1.0 / 3600.0    # 0.5 seconds
 
     result: pd.DataFrame = execute_runs(end_time=end_time, time_step=time_step, probability_detect=probability_detect, num_replicates=num_reps)
     print(result)

@@ -85,18 +85,18 @@ class Aircraft():
             Calculate a timestep update and end sim if target found or sim time has ended
         '''
         # check if found target
-        target_found_time = -1.0
+        target_found_time = np.nan
         tgt_found: bool = self.check_point_in_fov(self.target_location)
 
         # if found target, update the results information and end the sim
         if tgt_found:
-            print(f'target found when craft was at {self.get_position()[:2]} after {current_time} hours.')
-            target_found_time = current_time + self.one_way_transit_time_hrs
+            # print(f'target found when craft was at {self.get_position()[:2]} after {current_time:.2f} hours.')
+            target_found_time = (current_time + self.one_way_transit_time_hrs).iloc[0]  # convert to numpy float 64 from pandas series with 1 element
             return True, target_found_time, self.calc_design_cost()
 
         # if BINGO status, end the sim
         elif current_time >= self.max_on_station_endurance:
-            print('ran out of fuel')
+            # print('ran out of fuel')
             return True, target_found_time, self.calc_design_cost()
         
         # the target is not found and there is remaining endurance.  Calculate the next position
@@ -122,7 +122,7 @@ class Aircraft():
 
         # check if reached next waypoint.  If so, update to next waypoint
         dist_from_waypoint = np.linalg.norm([goal_waypoint[0] - current_xy[0], goal_waypoint[1] - current_xy[1]])
-        if dist_from_waypoint <= 0.2:
+        if dist_from_waypoint <= 0.5:
             heading = upcoming_waypoint_heading
             current_position = goal_waypoint
             
@@ -187,10 +187,11 @@ class Aircraft():
         if np.all([(np.abs(u) <= self.sensor_projected_width) , (np.abs(v) <= self.sensor_projected_width)]):
             random_draw_successful_detect = np.random.binomial(1, self.p_detect)
             if(random_draw_successful_detect):
-                print('successful detect')
+                # print('successful detect')
                 return True
             else:
-                print('unsuccessful detect in range')
+                # print('unsuccessful detect in range')
+                pass
 
         # simplified method:
 
