@@ -61,13 +61,13 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, end_time, time_step,
 def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> pd.DataFrame:
     # define the run matrix input factors:
     sensor_types = ['a', 'b', 'c']
-    machs = np.linspace(0.4, 0.9, num=3)
-    altitudes = np.linspace(20000, 25000, num=2)
+    machs = np.linspace(0.4, 0.9, num=6)
+    altitudes = np.linspace(5000, 25000, num=8)
 
     jobs = generate_runs('ff', sensor_types, machs, altitudes, end_time, time_step, probability_detect, num_replicates)
 
     print(f'running {len(jobs)} jobs on {mp.cpu_count()-1} cores.')
-    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1)
+    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1, chunksize=100)
 
     results_df = pd.DataFrame(columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)'])
     for result in r:
@@ -76,7 +76,7 @@ def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> p
     return results_df
 
 if __name__ == "__main__":
-    num_reps = 2
+    num_reps = 15
     probability_detect = 0.5
     end_time = 18   # hours
     time_step = 1.0 / 3600.0    # 0.5 seconds
