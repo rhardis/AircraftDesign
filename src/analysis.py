@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from os import path
 from paretoset import paretoset
+from sklearn.preprocessing import LabelEncoder
 
 def print_summaries_by_sensor(df):
     for sensor in ['a', 'b', 'c']:
@@ -25,9 +26,29 @@ def plot_pareto_points(df, x, y):
     plt.ylabel('Cost ($M)')
     plt.show()
 
-if __name__ == '__main__':
-    load_file = 'simulation_results_30.0_treatments_1_reps.csv'
-    df = pd.read_csv(path.join(load_file))
+def aggregate_over_treatment(df) -> pd.DataFrame:
+    '''
+    '''
 
+    df = df.groupby(by='treatment').mean()
+    df.index = df.index.astype(int)
+    return df
+
+def encode_categorical(df, encode_cols: list[str]) -> pd.DataFrame:
+    '''
+    '''
+
+    label_encoder = LabelEncoder()
+    for col in encode_cols:
+        df[col] = label_encoder.fit_transform(df[col])
+        if col == 'sensor':
+            df[col] += 1
+    return df
+
+if __name__ == '__main__':
+    load_file = 'simulation_results_72.0_treatments_3_reps.csv'
+    df = pd.read_csv(path.join(load_file))
+    df = encode_categorical(df, ['sensor'])
+    df = aggregate_over_treatment(df)
     print_summaries_by_sensor(df)
     plot_pareto_points(df, 'Time to Detect', 'Cost ($M)')
