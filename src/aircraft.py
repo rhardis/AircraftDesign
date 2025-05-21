@@ -2,16 +2,19 @@
 import numpy as np
 import pandas as pd
 
+from sim_platform import Platform
+
 class StaticInfo():
     def __init__(self):
         self.sensor_info: dict = {'a': {'fov': 15, 'cost': 0.05}, 'b': {'fov': 30, 'cost': 1.0}, 'c': {'fov': 60, 'cost': 10.0}}
         self.speed_of_sound_at_altitudes: pd.DataFrame = pd.DataFrame(data=[1204, 1182, 1160, 1138, 1115], index=[5000, 10000, 15000, 20000, 25000], columns=['speed_kmps'])
 
-class Aircraft():
-    def __init__(self, sensor_type: str='a', speed: float=0.9, altitude: float=25000, probability_detect: float=0.5, tgt_location_x: float=0.0, tgt_location_y: float=0.0, az_cue_angle: float=-90.0, step_size: float=1.0/7200.0, random_seed: int=999999) -> None:
+class Aircraft(Platform):
+    def __init__(self, sensor_type: str='a', speed: float=0.9, altitude: float=25000, probability_detect: float=0.5, location_x: float=0.0, location_y: float=0.0, heading: float=3.0*np.pi/4.0, az_cue_angle: float=-90.0, step_size: float=1.0/3600.0, random_seed: int=999999, targets: dict= {}) -> None:
+        super().__init__(step_size=step_size, speed=speed, random_seed=random_seed, location_x=location_x, location_y=location_y, heading=heading)
         self.info = StaticInfo()
-        self.timestep_size = step_size
-        self.mach = speed
+        # self.timestep_size = step_size
+        # self.mach = speed
         self.air_speed_kmph = self.convert_mach_to_airspeed(speed, altitude, self.info.speed_of_sound_at_altitudes)
         self.altitude_ft = altitude
         self.altitude_km = self.convert_ft_to_km(altitude)        
@@ -24,20 +27,10 @@ class Aircraft():
         self.max_on_station_endurance = self.calc_max_on_station_endurance()
         self._remaining_endurance = self.max_on_station_endurance
         self.p_detect = probability_detect
-        self.target_location = (tgt_location_x, tgt_location_y)
-        self._position = (100.0, 0.0, 3.0*np.pi/4.0)
+        # self.target_location = (tgt_location_x, tgt_location_y)
         self.route = self.make_initial_route()
         self.current_waypoint = 0
-        self.seed = self.set_seed(random_seed)
-
-    def set_seed(self, seed_val) -> int:
-        np.random.seed(seed_val)
-        return seed_val
-
-    def circular_pi(self, value: float) -> float:
-        if value > 2*np.pi:
-            value = np.remainder(value, 2*np.pi)
-        return value
+        self.targets: dict = targets
 
     def make_initial_route(self) -> list[tuple[float]]:
         '''
@@ -71,9 +64,6 @@ class Aircraft():
         
         return route
 
-    def convert_ft_to_km(self, feet: float) -> float:
-        return 0.0003048 * feet
-
     def set_remaining_endurance(self, time: float) -> None:
         self._remaining_endurance = self.max_on_station_endurance - time
 
@@ -86,17 +76,18 @@ class Aircraft():
         '''
         # check if found target
         target_found_time = np.nan
-        tgt_found: bool = self.check_point_in_fov(self.target_location)
+        # tgt_found: bool = self.check_point_in_fov(self.target_location)
+        tgt_found: int = self.check_targets_in_fov(current_time)        
 
         # if found target, update the results information and end the sim
-        if tgt_found:
-            # print(f'target found when craft was at {self.get_position()[:2]} after {current_time:.2f} hours.')
+        if tgt_found == len(self.targets.keys()):
+            print(f'target found when craft was at {self.get_position()[:2]} after {current_time:.2f} hours.')
             target_found_time = (current_time + self.one_way_transit_time_hrs).iloc[0]  # convert to numpy float 64 from pandas series with 1 element
             return True, target_found_time, self.calc_design_cost()
 
         # if BINGO status, end the sim
         elif current_time >= self.max_on_station_endurance:
-            # print('ran out of fuel')
+            print('ran out of fuel')
             return True, target_found_time, self.calc_design_cost()
         
         # the target is not found and there is remaining endurance.  Calculate the next position
@@ -106,12 +97,6 @@ class Aircraft():
 
             # 
         return False, target_found_time, -1.0
-
-    def get_position(self) -> tuple[float]:
-        return self._position
-
-    def set_position(self, new_pos: tuple[float]) -> None:
-        self._position = new_pos
 
     def calculate_next_position(self) -> tuple[float]:
         goal_waypoint = self.route[self.current_waypoint]
@@ -161,14 +146,30 @@ class Aircraft():
         aircraft_cost = (50 * self.mach**2) - (35 * self.mach) + (0.03 * (self.altitude_ft/1000)**2) - (0.2 * (self.altitude_ft/1000)) + 11
         total_cost = aircraft_cost + self.sensor_cost
         return total_cost
+    
+    def check_targets_in_fov(self, current_time: float) -> int:
+        '''
+            Loops over all possible targets in sim and returns how many are in the sensor's view
+        '''
+        total_found = 0
+        for target, info in self.targets.items():
+            already_found = self.targets[target]['found']['value']
+            if already_found:
+                total_found += 1
+            else:
+                self.targets[target]['found']['time'] = current_time
+                self.targets[target]['found']['value'] = self.check_point_in_fov(info['tgt_object']._position)
+                if self.targets[target]['found']['value']:
+                    total_found += 1
+        return total_found
 
     def check_point_in_fov(self, point: tuple[float]) -> bool:
         '''
         
         '''
         # locations:
-        tgt_x = self.target_location[0]
-        tgt_y = self.target_location[1]
+        tgt_x = point[0]
+        tgt_y = point[1]
         own_x = self.get_position()[0]
         own_y = self.get_position()[1]        
 
@@ -179,7 +180,7 @@ class Aircraft():
         # rotate the coordinates from WCS to entity's coordinate system x,y --> u,v
         psi = self.get_position()[2] - np.arctan2(relative_y , relative_x)
         psi_deg = psi * 180 / np.pi
-        norm = np.sqrt(relative_x**2 + relative_y**2)
+        norm = np.sqrt(relative_x**2 + relative_y**2)   # distance to center of target
         u = norm * np.cos(psi)
         v = norm * np.sin(psi)
 
@@ -200,4 +201,8 @@ class Aircraft():
         #     return True
         return False
     
+    def get_position(self) -> tuple[float]:
+        return self._position
 
+    def set_position(self, new_pos: tuple[float]) -> None:
+        self._position = new_pos
