@@ -47,10 +47,14 @@ def plot_score_cost_tradeoff(df, x, y):
     for point in optimal_df.index:
         x_loc = optimal_df.loc[point, x]
         y_loc = optimal_df.loc[point, y]
+        err = info_df.loc[point, 'total_std']
         speed_data = info_df.loc[point, 'speed']
         alt_data = info_df.loc[point, 'altitude']
         sensor_data = get_sensor_type(info_df.loc[point, 'sensor'])
         text = f'sensor: {sensor_data}\nspeed: {speed_data:.1f}\naltitude: {alt_data:.1f}'
+
+        plt.errorbar(x=y_loc, y=x_loc, yerr=err, color='lightgray', capsize=5)
+
         plt.annotate(text, (y_loc, x_loc), textcoords="offset points", xytext=text_offsets, ha='center',
                      arrowprops=dict(facecolor='black', shrink=0.05),
                      fontsize=5,
@@ -103,6 +107,10 @@ def plot_pareto_points(df, x, y, cutoff):
     for point in optimal_df.index:
         x_loc = optimal_df.loc[point, x]
         y_loc = optimal_df.loc[point, y]
+        err = info_df.loc[point, f'{x}_std']
+
+        plt.errorbar(y_loc, x_loc, yerr=err, color='lightgray', capsize=5)
+
         speed_data = info_df.loc[point, 'speed']
         alt_data = info_df.loc[point, 'altitude']
         sensor_data = get_sensor_type(info_df.loc[point, 'sensor'])
@@ -127,37 +135,47 @@ def aggregate_over_treatment(df) -> pd.DataFrame:
     '''
     '''
 
-    df = df.groupby(by='treatment').mean()
-    df.index = df.index.astype(int)
-    return df
+    mean_df = df.groupby(by='treatment').mean()
+    mean_df.index = mean_df.index.astype(int)
+
+    std_df = df.groupby(by='treatment').std()
+    std_df.index = std_df.index.astype(int)
+
+    mean_df['Time_to_Detect_hrs_std'] = std_df['Time_to_Detect_hrs']
+    mean_df['Targets_Found_std'] = std_df['Targets_Found']
+    return mean_df
 
 def score_df(df):
     scores = [10, 10, 80]
     df.fillna(20, inplace=True)
     df['score_constant'] = [scores[int(mission)] for mission in df['mission_type']]
     df['score_val'] = 0
+    df['score_std'] = 0
     counter = 0
     for row in df.itertuples():
         '''
-        8: found time
-        10: mission type
-        11: qty
         '''
         if row.mission_type == 0:
             score = (20.0 - row.Time_to_Detect_hrs) / 20.0
+            var = (20.0 - row.Time_to_Detect_hrs_std) / 20.0
         elif row.mission_type == 1:
             score = row.Targets_Found / 1.0
+            var = row.Targets_Found_std / 1.0
         else:
             score = row.Targets_Found / 10.0
+            var = row.Targets_Found_std / 10.0
         
         df.loc[counter, 'score_val'] = score
+        df.loc[counter, 'score_std'] += var
         counter += 1
 
     df['total_score'] = df['score_val'] * df['score_constant']
+    df['total_std'] = df['score_std'] * df['score_constant']
 
     df['tag'] = [f'{sensor}_{speed}_{alt}' for sensor, alt, speed in zip(df['sensor'], df['speed'], df['altitude'])]
 
     df = df.groupby(by='tag').sum()
+    df['total_std'] = np.sqrt(df['total_std'])
 
     df.sort_values(by='total_score', inplace=True, ascending=False)
     return df
