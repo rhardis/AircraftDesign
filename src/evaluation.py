@@ -96,6 +96,7 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, missions, end_time, 
                 runs.append(ones_mat.iloc[idx, :].to_list())
     else:
         pass
+    ones_mat.to_csv('run_matrix.csv')
     return runs
 
 def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> pd.DataFrame:
@@ -108,11 +109,11 @@ def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> p
     jobs = generate_runs('ff', sensor_types, machs, altitudes, missions, end_time, time_step, probability_detect, num_replicates)
 
     # r = [run_sim(jobs[-1])]
-    print(f'running {len(jobs)} jobs on {mp.cpu_count()} cores.')
+    print(f'running {len(jobs)} jobs on {mp.cpu_count()-1} cores.')
     # for i, job in enumerate(jobs):
     #     print(i)
     #     run_sim(job)
-    r = process_map(run_sim, jobs[-5:], max_workers=mp.cpu_count(), chunksize=3)
+    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1, chunksize=3)
 
     results_df = pd.DataFrame(columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)', 'mission_type', 'found_quantity'])
     for result in r:
