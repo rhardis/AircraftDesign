@@ -1,0 +1,39 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+def plot_aircraft_route(air_df, tgt_dfs):
+    axes = air_df.plot.line(x='x', y='y')
+    air_end_point = air_df.iloc[-1, 1:3]
+    prj_w = air_df['projection_width'][0]
+    square = patches.Rectangle((air_end_point['x'] - prj_w/2, air_end_point['y'] - prj_w/2), prj_w, prj_w, edgecolor='purple', facecolor='none')
+    axes.add_patch(square)
+
+
+    for tgt_df in tgt_dfs:
+        plt.plot(tgt_df['x'], tgt_df['y'])
+    
+        tgt_end_point = tgt_df.iloc[-1, 1:3]
+        x = [air_end_point.loc['x'], tgt_end_point.loc['x']]
+        y = [air_end_point.loc['y'], tgt_end_point.loc['y']]
+        plt.plot(x, y)
+        plt.scatter(tgt_end_point['x'], tgt_end_point['y'], marker='v', color='r')
+    plt.show()
+
+
+if __name__ == '__main__':
+    altitude = 25000.0
+    speed = 0.9
+    sensor = 'c'
+    mission = 0
+    num_tgts = 10
+    tag = f'{float(altitude)}_{float(speed)}_{sensor}_{int(mission)}'
+    target_dfs = []
+    for i in range(num_tgts):
+        target_file = f'points_log_target_{i}_{tag}.csv'
+        tgt_df = pd.read_csv(target_file)
+        target_dfs.append(tgt_df)
+
+    aircraft_file = f'points_log_aircraft_{tag}.csv'
+    air_df = pd.read_csv(aircraft_file)
+    plot_aircraft_route(air_df, target_dfs)

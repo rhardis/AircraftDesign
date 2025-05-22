@@ -10,7 +10,7 @@ class StaticInfo():
         self.speed_of_sound_at_altitudes: pd.DataFrame = pd.DataFrame(data=[1204, 1182, 1160, 1138, 1115], index=[5000, 10000, 15000, 20000, 25000], columns=['speed_kmps'])
 
 class Aircraft(Platform):
-    def __init__(self, sensor_type: str='a', speed: float=0.9, altitude: float=25000, probability_detect: float=0.5, location_x: float=0.0, location_y: float=0.0, heading: float=3.0*np.pi/4.0, az_cue_angle: float=-90.0, step_size: float=1.0/3600.0, random_seed: int=999999, targets: dict= {}) -> None:
+    def __init__(self, sensor_type: str='a', speed: float=0.9, altitude: float=25000, probability_detect: float=0.5, location_x: float=0.0, location_y: float=0.0, heading: float=3.0*np.pi/4.0, az_cue_angle: float=-90.0, step_size: float=1.0/3600.0, random_seed: int=999999, targets: dict= {}, mission: int=0) -> None:
         super().__init__(step_size=step_size, speed=speed, random_seed=random_seed, location_x=location_x, location_y=location_y, heading=heading)
         self.info = StaticInfo()
         # self.timestep_size = step_size
@@ -31,6 +31,10 @@ class Aircraft(Platform):
         self.route = self.make_initial_route()
         self.current_waypoint = 0
         self.targets: dict = targets
+        self.points_log = {'x': [], 'y': [], 'heading':[], 'projection_width': []}
+        self.mission = mission
+        self.tag = f'{self.altitude_ft}_{self.mach}_{self.sensor_type}_{self.mission}'
+        self.found_qty = 0
 
     def make_initial_route(self) -> list[tuple[float]]:
         '''
@@ -76,34 +80,59 @@ class Aircraft(Platform):
         '''
         # check if found target
         target_found_time = np.nan
+
         # tgt_found: bool = self.check_point_in_fov(self.target_location)
         tgt_found: int = self.check_targets_in_fov(current_time)        
 
         # if found target, update the results information and end the sim
         if tgt_found == len(self.targets.keys()):
-            print(f'target found when craft was at {self.get_position()[:2]} after {current_time:.2f} hours.')
+            tgt = self.targets[0]['tgt_object']
+            print(f'target found when craft was at ({self.get_position()[:2][0].iloc[0]}, {self.get_position()[:2][1].iloc[0]}) and target was at \
+                  ({tgt._position[0]}, {tgt._position[1]}) after {current_time:.2f} hours.')
             target_found_time = (current_time + self.one_way_transit_time_hrs).iloc[0]  # convert to numpy float 64 from pandas series with 1 element
-            return True, target_found_time, self.calc_design_cost()
+            pd.DataFrame(self.points_log).to_csv(f'points_log_aircraft_{self.altitude_ft}_{self.mach}_{self.sensor_type}_{self.mission}.csv')
+            for tgt_id, tgt_info in self.targets.items():
+                tgt_info['tgt_object'].tag = self.tag
+                tgt_info['tgt_object'].output_log_points()         
+            return True, target_found_time, self.found_qty, self.calc_design_cost()
 
         # if BINGO status, end the sim
         elif current_time >= self.max_on_station_endurance:
             print('ran out of fuel')
-            return True, target_found_time, self.calc_design_cost()
+            pd.DataFrame(self.points_log).to_csv(f'points_log_aircraft_{self.tag}.csv')
+            for tgt_id, tgt_info in self.targets.items():
+                tgt_info['tgt_object'].tag = self.tag
+                tgt_info['tgt_object'].output_log_points()
+            return True, target_found_time, self.found_qty, self.calc_design_cost()
         
         # the target is not found and there is remaining endurance.  Calculate the next position
         else:
             # update the position
             self.set_position(self.calculate_next_position())
+            new_pos = self.get_position()
+            self.points_log['x'].append(new_pos[0].iloc[0])
+            self.points_log['y'].append(new_pos[1].iloc[0])
+            self.points_log['heading'].append(new_pos[2])
+            self.points_log['projection_width'].append(self.sensor_projected_width)
 
             # 
-        return False, target_found_time, -1.0
+        return False, target_found_time, self.found_qty, -1.0
 
     def calculate_next_position(self) -> tuple[float]:
-        goal_waypoint = self.route[self.current_waypoint]
+        if self.current_waypoint >= len(self.route):
+            self.current_waypoint = 0
+            current_position = self.get_position()
+            current_xy = current_position[:2]
+            goal_waypoint = self.route[self.current_waypoint]
+            heading = np.arctan2([goal_waypoint[1] - current_xy[1].iloc[0]], [goal_waypoint[0] - current_xy[0].iloc[0]])
+        else:
+            current_position = self.get_position()
+            current_xy = current_position[:2]
+            heading = current_position[2]
+            goal_waypoint = self.route[self.current_waypoint]       
+            
+        
         upcoming_waypoint_heading = goal_waypoint[2]
-        current_position = self.get_position()
-        current_xy = current_position[:2]
-        heading = current_position[2]
 
         # check if reached next waypoint.  If so, update to next waypoint
         dist_from_waypoint = np.linalg.norm([goal_waypoint[0] - current_xy[0], goal_waypoint[1] - current_xy[1]])
@@ -161,6 +190,8 @@ class Aircraft(Platform):
                 self.targets[target]['found']['value'] = self.check_point_in_fov(info['tgt_object']._position)
                 if self.targets[target]['found']['value']:
                     total_found += 1
+
+        self.found_qty = total_found
         return total_found
 
     def check_point_in_fov(self, point: tuple[float]) -> bool:
@@ -185,7 +216,7 @@ class Aircraft(Platform):
         v = norm * np.sin(psi)
 
         # check the point's u,v coordinates are both within altitude * tan(1/2 FOV)
-        if np.all([(np.abs(u) <= self.sensor_projected_width) , (np.abs(v) <= self.sensor_projected_width)]):
+        if np.all([(np.abs(u) <= self.sensor_projected_width/2) , (np.abs(v) <= self.sensor_projected_width/2)]):
             random_draw_successful_detect = np.random.binomial(1, self.p_detect)
             if(random_draw_successful_detect):
                 # print('successful detect')
