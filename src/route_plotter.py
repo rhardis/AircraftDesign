@@ -22,7 +22,11 @@ def plot_aircraft_route(air_df, tgt_dfs):
     plt.scatter(air_end_point['x'], air_end_point['y'], marker='^', color='b')
     plt.scatter(air_start_point['x'], air_start_point['y'], marker='o', color='black')
     plt.text(100.0, 0.0, 'Start Point')
-    axes.legend(labels=['search path'])
+    axes.legend(labels=['search path', 'EOIR Sea Level FOV', 'tgt movement path(s)'])
+    plt.xlabel('x (km)')
+    plt.ylabel('y (km)')
+    plt.title('Aircraft Spiral Search Pattern\nand Target Movement in Search Area')
+    plt.savefig('search path.png')
     plt.show()
 
 
