@@ -53,9 +53,11 @@ def plot_score_cost_tradeoff(df, x, y):
         sensor_data = get_sensor_type(info_df.loc[point, 'sensor'])
         text = f'sensor: {sensor_data}\nspeed: {speed_data:.1f}\naltitude: {alt_data:.1f}'
 
-        plt.errorbar(x=y_loc, y=x_loc, yerr=err, color='lightgray', capsize=5)
+        if use_err_bars:
+            plt.errorbar(x=y_loc, y=x_loc, yerr=err, color='lightgray', capsize=5)
 
-        plt.annotate(text, (y_loc, x_loc), textcoords="offset points", xytext=text_offsets, ha='center',
+        if use_labels:
+            plt.annotate(text, (y_loc, x_loc), textcoords="offset points", xytext=text_offsets, ha='center',
                      arrowprops=dict(facecolor='black', shrink=0.05),
                      fontsize=5,
                      bbox=dict(boxstyle='square,pad=0.1', edgecolor='black', facecolor='white'))
@@ -109,13 +111,16 @@ def plot_pareto_points(df, x, y, cutoff):
         y_loc = optimal_df.loc[point, y]
         err = info_df.loc[point, f'{x}_std']
 
-        plt.errorbar(y_loc, x_loc, yerr=err, color='lightgray', capsize=5)
+        if use_err_bars:
+            plt.errorbar(y_loc, x_loc, yerr=err, color='lightgray', capsize=5)
 
         speed_data = info_df.loc[point, 'speed']
         alt_data = info_df.loc[point, 'altitude']
         sensor_data = get_sensor_type(info_df.loc[point, 'sensor'])
         text = f'sensor: {sensor_data}\nspeed: {speed_data:.1f}\naltitude: {alt_data:.1f}'
-        plt.annotate(text, (y_loc, x_loc), textcoords="offset points", xytext=text_offsets, ha='center',
+
+        if use_labels:
+            plt.annotate(text, (y_loc, x_loc), textcoords="offset points", xytext=text_offsets, ha='center',
                      arrowprops=dict(facecolor='black', shrink=0.05),
                      fontsize=5)
 
@@ -192,6 +197,9 @@ def encode_categorical(df, encode_cols: list[str]) -> pd.DataFrame:
     return df
 
 if __name__ == '__main__':
+    use_labels = False
+    use_err_bars = True
+
     load_file = 'simulation_results_216.0_treatments_4_reps.csv'
     df = pd.read_csv(path.join(load_file))
     df = encode_categorical(df, ['sensor'])

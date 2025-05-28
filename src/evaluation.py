@@ -41,7 +41,7 @@ def run_sim(args):
             targets[i] = {'tgt_object': TargetPlat(speed=tgt_speed, step_size=timestep, random_seed=random_seed, location_x=tgt_x_i, location_y=tgt_y_i, heading=tgt_heading, id=i), 
                        'found': {'time': np.nan, 'value': False}}
 
-    craft = Aircraft(sensor_type=sensor, speed=speed, altitude=altitude, probability_detect=probability_detect, location_x=100.0, location_y=0.0, heading=3.0*np.pi/4.0, step_size=timestep, random_seed=random_seed, targets=targets)
+    craft = Aircraft(sensor_type=sensor, speed=speed, altitude=altitude, probability_detect=probability_detect, location_x=100.0, location_y=0.0, heading=3.0*np.pi/4.0, step_size=timestep, random_seed=random_seed, targets=targets, mission=mission_type)
 
     current_time = 0.0
     done = False
@@ -101,19 +101,22 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, missions, end_time, 
 
 def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> pd.DataFrame:
     # define the run matrix input factors:
-    sensor_types = ['a', 'b', 'c']
-    machs = np.linspace(0.4, 0.9, num=4)
-    altitudes = np.linspace(5000, 25000, num=6)
+    sensor_types = ['c']#['a', 'b', 'c']
+    machs = np.linspace(0.4, 0.9, num=2)
+    altitudes = np.linspace(5000, 25000, num=2)
     missions = [0, 1, 2]
 
     jobs = generate_runs('ff', sensor_types, machs, altitudes, missions, end_time, time_step, probability_detect, num_replicates)
 
+    # run_sim([np.float64(18.0), np.float64(0.0002777777777777778), 'c', np.float64(0.9), np.float64(25000.0), np.float64(1.0), np.float64(0.5), np.float64(8.72029939098464), np.float64(17.00248280957740), np.float64(1.0), np.float64(80.0)])
+    # print(jobs[-1])
+    # assert False
     # r = [run_sim(jobs[-1])]
     print(f'running {len(jobs)} jobs on {mp.cpu_count()-1} cores.')
     # for i, job in enumerate(jobs):
     #     print(i)
     #     run_sim(job)
-    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1, chunksize=3)
+    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1, chunksize=1)
 
     results_df = pd.DataFrame(columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)', 'mission_type', 'found_quantity'])
     for result in r:
@@ -122,7 +125,7 @@ def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> p
     return results_df
 
 if __name__ == "__main__":
-    num_reps = 4
+    num_reps = 1
     probability_detect = 0.5
     end_time = 18   # hours
     time_step = 1.0 / 3600.0    # 0.5 seconds
