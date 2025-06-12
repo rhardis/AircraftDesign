@@ -1,6 +1,8 @@
 import multiprocessing as mp
 import numpy as np
 import pandas as pd
+from time import perf_counter
+from tqdm import tqdm as tqdm_single_core
 from tqdm.contrib.concurrent import process_map
 from pyDOE3 import fullfact as ff
 
@@ -101,9 +103,9 @@ def generate_runs(doe_type, sensor_types, machs, altitudes, missions, end_time, 
 
 def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> pd.DataFrame:
     # define the run matrix input factors:
-    sensor_types = ['c']#['a', 'b', 'c']
-    machs = np.linspace(0.4, 0.9, num=2)
-    altitudes = np.linspace(5000, 25000, num=2)
+    sensor_types = ['a', 'b', 'c']
+    machs = np.linspace(0.4, 0.9, num=3)
+    altitudes = np.linspace(5000, 25000, num=4)
     missions = [0, 1, 2]
 
     jobs = generate_runs('ff', sensor_types, machs, altitudes, missions, end_time, time_step, probability_detect, num_replicates)
@@ -112,11 +114,16 @@ def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> p
     # print(jobs[-1])
     # assert False
     # r = [run_sim(jobs[-1])]
-    print(f'running {len(jobs)} jobs on {mp.cpu_count()-1} cores.')
-    # for i, job in enumerate(jobs):
-    #     print(i)
-    #     run_sim(job)
-    r = process_map(run_sim, jobs, max_workers=mp.cpu_count()-1, chunksize=1)
+    workers = 1#mp.cpu_count()-1
+    jobs_per_chunk = 1
+    print(f'running {len(jobs)} jobs on {workers} cores with chunksize {jobs_per_chunk}.')
+
+    if workers > 1:
+        r = process_map(run_sim, jobs, max_workers=workers, chunksize=jobs_per_chunk)
+    elif workers == 1:
+        r = [run_sim(job) for job in tqdm_single_core(jobs)]
+    else:
+        assert False, 'had too few workers.  Expected >=1'
 
     results_df = pd.DataFrame(columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)', 'mission_type', 'found_quantity'])
     for result in r:
@@ -124,11 +131,25 @@ def execute_runs(end_time, time_step, probability_detect, num_replicates=1) -> p
     results_df.to_csv(f'simulation_results_{len(jobs)/num_replicates}_treatments_{num_replicates}_reps.csv', index=False)
     return results_df
 
+def record_performance(record_file: str, runtime: float, result: pd.DataFrame):
+    records = pd.read_csv(record_file)
+
 if __name__ == "__main__":
-    num_reps = 1
+    # Start the timer
+    start_time = perf_counter()
+
+    num_reps = 10
     probability_detect = 0.5
     end_time = 18   # hours
     time_step = 1.0 / 3600.0    # 0.5 seconds
 
     result: pd.DataFrame = execute_runs(end_time=end_time, time_step=time_step, probability_detect=probability_detect, num_replicates=num_reps)
-    print(result)
+
+    # Stop the timer
+    end_time = perf_counter()
+
+    # Calculate elapsed time
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.6f} seconds")
+    # record_performance()
+
