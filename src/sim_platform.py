@@ -6,6 +6,7 @@ class Platform():
         self.mach = speed
         self.seed = self.set_seed(random_seed)
         self._position = (location_x, location_y, heading) #(100.0, 0.0, 3.0*np.pi/4.0)
+        self.save_directory = ''
 
     def set_seed(self, seed_val) -> int:
         np.random.seed(int(seed_val))

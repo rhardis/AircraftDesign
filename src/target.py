@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from os import path
+
 from sim_platform import Platform
 
 class TargetPlat(Platform):
@@ -25,4 +27,5 @@ class TargetPlat(Platform):
         return False, np.nan, -1.0
     
     def output_log_points(self):
-        pd.DataFrame(self.points_log).to_csv(f'points_log_target_{self.id}_{self.tag}.csv')
+        pd.DataFrame(self.points_log).to_csv(
+            path.join(self.save_directory, f'points_log_target_{self.id}_{self.tag}.csv'))

@@ -1,6 +1,7 @@
 # imports
 import numpy as np
 import pandas as pd
+from os import path
 
 from sim_platform import Platform
 
@@ -90,7 +91,7 @@ class Aircraft(Platform):
             print(f'target found when craft was at ({self.get_position()[:2][0].iloc[0]}, {self.get_position()[:2][1].iloc[0]}) and target was at \
                   ({tgt._position[0]}, {tgt._position[1]}) after {current_time:.2f} hours.')
             target_found_time = (current_time + self.one_way_transit_time_hrs).iloc[0]  # convert to numpy float 64 from pandas series with 1 element
-            pd.DataFrame(self.points_log).to_csv(f'points_log_aircraft_{self.altitude_ft}_{self.mach}_{self.sensor_type}_{self.mission}.csv')
+            pd.DataFrame(self.points_log).to_csv(path.join(self.save_directory, f'points_log_aircraft_{self.tag}.csv'))
             for tgt_id, tgt_info in self.targets.items():
                 tgt_info['tgt_object'].tag = self.tag
                 tgt_info['tgt_object'].output_log_points()         
@@ -99,7 +100,7 @@ class Aircraft(Platform):
         # if BINGO status, end the sim
         elif current_time >= self.max_on_station_endurance:
             print('ran out of fuel')
-            pd.DataFrame(self.points_log).to_csv(f'points_log_aircraft_{self.tag}.csv')
+            pd.DataFrame(self.points_log).to_csv(path.join(self.save_directory, f'points_log_aircraft_{self.tag}.csv'))
             for tgt_id, tgt_info in self.targets.items():
                 tgt_info['tgt_object'].tag = self.tag
                 tgt_info['tgt_object'].output_log_points()
