@@ -1,3 +1,33 @@
-Test ID,OS Name,Processor Type,CPU,Max Concurrent Processors,Installed RAM,Available RAM,Total Virtual Memory,Available Virtual Memory,Sensor Type Count,Mach Count,Altitude Count,Mission Count,Replicate Count,Total Runs,Worker Count,Chunksize,Elapsed Time,Seconds Per Job
-0,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,1,2,2,3,1,12,1,1,332.048752,27.67072933
-1,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,1,2,2,3,1,1080,1,1,41760,38.66666667
+Test ID,OS Name,Processor Type,CPU,Max Concurrent Processors,Installed RAM,Available RAM,Total Virtual Memory,Available Virtual Memory,Sensor Type Count,Mach Count,Altitude Count,Mission Count,Replicate Count,Total Runs,Worker Count,Chunksize,Multiprocessing Function,Elapsed Time,Seconds Per Job
+0,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,1,2,2,3,1,12,1,1,tqdm process map,332.048752,27.67072933
+1,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,1,1,tqdm process map,41760,38.66666667
+2,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,2,2,tqdm process map,23634,21.88
+3,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,4,2,pool imap with tqdm single core bar,13175.39668,12.2
+4,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,8,2,pool imap with tqdm single core bar,7750.110866,7.18
+5,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,12,2,pool imap with tqdm single core bar,5764.154955,5.34
+6,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,15,2,pool imap with tqdm single core bar,5267,4.876851852
+7,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,16,2,pool imap with tqdm single core bar,5244.100501,4.85
+8,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,2,5,pool imap with tqdm single core bar,23146.83826,21.43
+9,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,4,5,pool imap with tqdm single core bar,,
+10,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,8,5,pool imap with tqdm single core bar,,
+11,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,12,5,pool imap with tqdm single core bar,,
+12,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,15,5,pool imap with tqdm single core bar,,
+13,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,16,5,pool imap with tqdm single core bar,5465.8,5.06
+14,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,2,10,pool imap with tqdm single core bar,23597.55737,21.85
+15,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,4,10,pool imap with tqdm single core bar,,
+16,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,8,10,pool imap with tqdm single core bar,,
+17,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,12,10,pool imap with tqdm single core bar,,
+18,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,15,10,pool imap with tqdm single core bar,,
+19,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,16,10,pool imap with tqdm single core bar,5564.563993,5.15
+20,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,2,30,pool imap with tqdm single core bar,,
+21,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,4,30,pool imap with tqdm single core bar,,
+22,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,8,30,pool imap with tqdm single core bar,8567.918746,7.93
+23,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,12,30,pool imap with tqdm single core bar,,
+24,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,15,30,pool imap with tqdm single core bar,,
+25,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,16,30,pool imap with tqdm single core bar,,
+26,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,2,60,pool imap with tqdm single core bar,24732.52978,22.9
+27,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,4,60,pool imap with tqdm single core bar,14928.7,13.82
+28,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,8,60,pool imap with tqdm single core bar,,
+29,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,12,60,pool imap with tqdm single core bar,,
+30,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,15,60,pool imap with tqdm single core bar,,
+31,Windows 11,i9-9900k,3.6,16,64,49,67.9,504,3,3,4,3,1,1080,16,60,pool imap with tqdm single core bar,6866.461082,6.36

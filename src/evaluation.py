@@ -63,7 +63,7 @@ def record_output_data(data: pd.DataFrame, job_num: int, jobs: int, num_replicat
     '''
     '''
     if method == 'csv':
-        filename = f'simulation_results_{int(jobs / num_replicates)}_treatments_{int(num_replicates)}_reps_{int(job_num)}.csv'
+        filename = f'simulation_results_{int(jobs)}_treatments_{int(num_replicates)}_reps_{int(job_num)}.csv'
         data.to_csv(path.join(directory, filename), index=False)
 
 def run_sim(args):
@@ -132,6 +132,7 @@ def run_sim(args):
                             columns=['treatment', 'replicate', 'end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)', 'mission_type', 'found_quantity'])
 
     record_output_data(output_data, job_num, jobs, num_replicates, directory=directory, method='csv')
+    return None
 
 def generate_runs(doe_type, sensor_types, machs, altitudes, missions, end_time, time_step, probability_detect, num_replicates):
     runs = []
@@ -183,11 +184,12 @@ def aggregate_results(run_matrix_filename: str, results_location: str, method: s
     results_df = pd.DataFrame(columns=['end_time', 'time_step', 'sensor', 'speed', 'altitude', 'Pdetect', 'target_x', 'target_y', 'Time to Detect', 'Cost ($M)', 'mission_type', 'found_quantity'])
     if method == 'csv':
         runs = pd.read_csv(run_matrix_filename)
-        for row in runs.iterrows():
+        for _, row in runs.iterrows():
+            row = row    # this is 0 and 1.  1 is the index with information in it
             jobs = row['jobs']
             num_replicates = row['num_replicates']
             job_num = row['job_num']
-            filename = f'simulation_results_{int(len(jobs)/num_replicates)}_treatments_{int(num_replicates)}_reps_{int(job_num)}.csv'
+            filename = f'simulation_results_{int(jobs)}_treatments_{int(num_replicates)}_reps_{int(job_num)}.csv'
             full_path = path.join(results_location, filename)
             result = pd.read_csv(full_path)
             results_df = pd.concat([results_df, result])
@@ -198,14 +200,14 @@ def aggregate_results(run_matrix_filename: str, results_location: str, method: s
 def save_results(results_df, jobs, num_replicates, execution_time: float, method='csv'):
     results_df['execution_time'] = execution_time
     if method == 'csv':
-        results_df.to_csv(f'simulation_results_{int(len(jobs)/num_replicates)}_treatments_{int(num_replicates)}_reps.csv', index=False)
+        results_df.to_csv(f'simulation_results_{int(jobs)}_treatments_{int(num_replicates)}_reps.csv', index=False)
 
 def create_results_storage(num_treatments, num_replicates):
     directory = path.join('data', f'{int(num_treatments)}_treatments_{int(num_replicates)}_replicates')
     if not path.exists(directory):
         mkdir(directory)
 
-    make_new_db(directory)
+    # make_new_db(directory)
     return directory
 
 def execute_runs(sensor_types, machs, altitudes, missions, jobs_per_chunk, workers, end_time, time_step, probability_detect, num_replicates=1) -> pd.DataFrame:
@@ -223,7 +225,11 @@ def execute_runs(sensor_types, machs, altitudes, missions, jobs_per_chunk, worke
     results_storage_location = create_results_storage(n_treats, num_replicates)
 
     if workers > 1:
-        process_map(run_sim, jobs, max_workers=workers, chunksize=jobs_per_chunk)
+        # process_map(run_sim, jobs, max_workers=workers, chunksize=jobs_per_chunk)
+
+        with mp.Pool(processes=workers) as pool, tqdm_single_core(total=len(jobs)) as progress_bar:
+            for _ in pool.imap(run_sim, jobs, chunksize=jobs_per_chunk):
+                progress_bar.update()  # Update the progress bar for each completed task        
     elif workers == 1:
         [run_sim(job) for job in tqdm_single_core(jobs)]
     else:
@@ -240,8 +246,8 @@ if __name__ == "__main__":
     start_time = perf_counter()
 
     n_sensors = 3
-    n_machs = 2
-    n_alts = 2
+    n_machs = 3
+    n_alts = 4
     n_missions = 3
     n_treatments = n_sensors * n_machs * n_alts * n_missions
 
@@ -250,14 +256,14 @@ if __name__ == "__main__":
     altitudes = np.linspace(5000, 25000, num=n_alts)
     missions = [0, 1, 2][:n_missions]
 
-    num_reps = 2
+    num_reps = 10
     probability_detect = 0.5
     end_time = 18   # hours
     time_step = 1.0 / 3600.0    # 0.5 seconds
-
+ 
     # set the compute parameters
-    workers = 6#mp.cpu_count()-1
-    jobs_per_chunk = 3
+    workers = 2#mp.cpu_count()-1
+    jobs_per_chunk = 10
 
     result: pd.DataFrame = execute_runs(sensor_types, machs, altitudes, missions, jobs_per_chunk, workers, end_time=end_time, time_step=time_step, probability_detect=probability_detect, num_replicates=num_reps)
 
